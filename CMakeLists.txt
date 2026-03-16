@@ -65,6 +65,8 @@ endif()
 # Caminho esperado para a GLAD
 set(GLAD_C_FILE "${CMAKE_SOURCE_DIR}/common/glad.c")
 
+file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR}/)
+
 # Verifica se os arquivos da GLAD estão no lugar
 if (NOT EXISTS ${GLAD_C_FILE})
     message(FATAL_ERROR "Arquivo glad.c não encontrado! Baixe a GLAD manualmente em [https://glad.dav1d.de/](https://glad.dav1d.de/) e coloque glad.h em include/glad/ e glad.c em common/")
