@@ -18,9 +18,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <Camera.hpp>
 #include <shader.hpp>
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void scroll_callback(GLFWwindow* window, double, double);
 
 int setupGeometry();
 
@@ -28,66 +30,11 @@ const GLuint WIDTH = 600, HEIGHT = 600;
 
 bool perspective = true; 
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 3.0f);
-
-float deltaTime = 1, lastFrame = 1;
-bool firstMouse = true;
-float lastX = WIDTH / 2.0, lastY = HEIGHT / 2.0,
-			yaw = -90.0, pitch = 0.0;
-
-void updateCameraPos(GLFWwindow* window) {
-		float cameraSpeed = 1.5f * deltaTime;
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		cameraPos += cameraSpeed * cameraFront;
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		cameraPos -= cameraSpeed * cameraFront;
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-}
-
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-	if(firstMouse) {
-		lastX = xpos;
-		lastY = ypos;
-		firstMouse = false;
-	}
-
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos;
-	lastX = xpos;
-	lastY = ypos;
-
-	float sensitivity = 0.05;
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw += xoffset;
-	pitch += yoffset;
-
-	if(pitch > 89.0f)
-		pitch = 89.0f;
-	if(pitch < -89.0f)
-		pitch = -89.0f;
-
-	glm::vec3 front = glm::vec3(
-		std::cos(glm::radians(yaw)) * std::cos(glm::radians(pitch)),
-		std::sin(glm::radians(pitch)),
-		std::sin(glm::radians(yaw)) * std::cos(glm::radians(pitch))
-	);
-
-	cameraFront = glm::normalize(front);
-
-	glm::vec3 right = glm::normalize(glm::cross(cameraFront, glm::vec3(0.0,1.0,0.0)));
-	cameraUp = glm::normalize(glm::cross(right, cameraFront));
-}
+Camera camera(WIDTH, HEIGHT);
 
 glm::mat4 model = glm::mat4(1); 
-glm::mat4 projection = glm::perspective(glm::radians(45.0f),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
-glm::mat4 view = glm::lookAt(cameraPos, cameraPos+cameraFront, cameraUp);
+glm::mat4 projection = glm::perspective(glm::radians(camera.fov),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
+glm::mat4 view;
 
 int main()
 {
@@ -106,7 +53,9 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	glfwSetKeyCallback(window, key_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
+	
+	glfwSetScrollCallback(window, scroll_callback);
+
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
@@ -129,13 +78,13 @@ int main()
 	GLuint VAO = setupGeometry();
 
 	shader.use();
-
+	
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-
+	view = camera.getView();
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	glEnable(GL_DEPTH_TEST);
@@ -143,7 +92,11 @@ int main()
 	
 	while (!glfwWindowShouldClose(window))
 	{
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
 		float currentFrame = glfwGetTime();
+		camera.deltaTime = currentFrame - camera.lastFrame;
+		camera.lastFrame = currentFrame;
 		glfwPollEvents();
 
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f); //cor de fundo
@@ -155,7 +108,7 @@ int main()
 
 		if (perspective)
 		{
-			projection = glm::perspective(glm::radians(45.0f),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
+			projection = glm::perspective(glm::radians(camera.fov),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
 			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
 		}
@@ -164,11 +117,12 @@ int main()
 			projection = glm::ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
 			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		}
-
-		updateCameraPos(window);
+		
+		camera.mouse_callback(xpos, ypos);
+		camera.updateCameraPos(window);
 		
 
-		view = glm::lookAt(cameraPos, cameraPos+cameraFront, cameraUp);
+		view = camera.getView();
 
 		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -180,12 +134,19 @@ int main()
 		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
 	}
 	glDeleteVertexArrays(1, &VAO);
 	glfwTerminate();
 	return 0;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+	if (camera.fov >= 1.0f && camera.fov <= 90.0f)
+		camera.fov -= yoffset;
+	if (camera.fov <= 1.0f)
+		camera.fov = 1.0f;
+	if (camera.fov >= 90.0f)
+		camera.fov = 90.0f;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
