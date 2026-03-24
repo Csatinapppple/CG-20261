@@ -18,16 +18,23 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <Camera.hpp>
 #include <shader.hpp>
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void scroll_callback(GLFWwindow* window, double, double);
 
 int setupGeometry();
 
 const GLuint WIDTH = 600, HEIGHT = 600;
 
-bool rotateX=false, rotateY=false, rotateZ=false;
 bool perspective = true; 
+
+Camera camera(WIDTH, HEIGHT);
+
+glm::mat4 model = glm::mat4(1); 
+glm::mat4 projection = glm::perspective(glm::radians(camera.fov),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
+glm::mat4 view;
 
 int main()
 {
@@ -46,6 +53,8 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	glfwSetKeyCallback(window, key_callback);
+	
+	glfwSetScrollCallback(window, scroll_callback);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -62,30 +71,32 @@ int main()
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, width, height);
 
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	Shader shader = Shader("./shaders/vertex.glsl", "./shaders/fragment.glsl");
 
 	GLuint VAO = setupGeometry();
 
-
 	shader.use();
-
-	glm::mat4 model = glm::mat4(1); 
+	
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
-	glm::mat4 projection = glm::perspective(glm::radians(45.0f),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-
-	glm::mat4 view = glm::lookAt(glm::vec3(0,0,-3), glm::vec3(0,0,0), glm::vec3(0,1,0));
+	view = camera.getView();
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	glEnable(GL_DEPTH_TEST);
 
-
+	
 	while (!glfwWindowShouldClose(window))
 	{
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
+		float currentFrame = glfwGetTime();
+		camera.deltaTime = currentFrame - camera.lastFrame;
+		camera.lastFrame = currentFrame;
 		glfwPollEvents();
 
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f); //cor de fundo
@@ -97,70 +108,23 @@ int main()
 
 		if (perspective)
 		{
-			projection = glm::perspective(glm::radians(45.0f),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
+			projection = glm::perspective(glm::radians(camera.fov),(float)WIDTH/(float)HEIGHT,0.1f,100.0f);
 			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
 		}
 		else // Troca para projeção paralela ortográfica
 		{
-			projection = glm::ortho(-3.0, 3.0, -3.0, 3.0, 0.1, 100.0);
+			projection = glm::ortho(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
 			glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 		}
+		
+		camera.mouse_callback(xpos, ypos);
+		camera.updateCameraPos(window);
+		
 
-
-
-		if (glfwGetKey(window, GLFW_KEY_1)==GLFW_PRESS)
-		{
-			//Visualização de frente
-			view = glm::lookAt(glm::vec3(0,0,-3), glm::vec3(0,0,0), glm::vec3(0,1,0));
-		}
-		else if (glfwGetKey(window, GLFW_KEY_2)==GLFW_PRESS)
-		{
-			//Visualização de costas
-			view = glm::lookAt(glm::vec3(0,0,3), glm::vec3(0,0,0), glm::vec3(0,1,0));
-		}
-		else if (glfwGetKey(window, GLFW_KEY_3)==GLFW_PRESS)
-		{
-			//Visualização da esquerda
-			view = glm::lookAt(glm::vec3(-3,0,0), glm::vec3(0,0,0), glm::vec3(0,1,0));
-		}
-		else if (glfwGetKey(window, GLFW_KEY_4)==GLFW_PRESS)
-		{
-			//Visualização da direita
-			view = glm::lookAt(glm::vec3(3,0,0), glm::vec3(0,0,0), glm::vec3(0,1,0));
-		}
-		else if (glfwGetKey(window, GLFW_KEY_5)==GLFW_PRESS)
-		{
-			//Visualização de cima
-			view = glm::lookAt(glm::vec3(0,3,0), glm::vec3(0,0,0), glm::vec3(0,0,1));
-		}
-		else if (glfwGetKey(window, GLFW_KEY_6)==GLFW_PRESS)
-		{
-			//Visualização debaixo
-			view = glm::lookAt(glm::vec3(0,-3,0), glm::vec3(0,0,0), glm::vec3(0,0,1));
-		}
+		view = camera.getView();
 
 		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-
-
-		float angle = (GLfloat)glfwGetTime();
-		model = glm::mat4(1); 
-		if (rotateX)
-		{
-			model = glm::rotate(model, angle, glm::vec3(1.0f, 0.0f, 0.0f));
-
-		}
-		else if (rotateY)
-		{
-			model = glm::rotate(model, angle, glm::vec3(0.0f, 1.0f, 0.0f));
-
-		}
-		else if (rotateZ)
-		{
-			model = glm::rotate(model, angle, glm::vec3(0.0f, 0.0f, 1.0f));
-
-		}
-
 		glUniformMatrix4fv(glGetUniformLocation(shader.ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 		glBindVertexArray(VAO);
@@ -176,39 +140,24 @@ int main()
 	return 0;
 }
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+	if (camera.fov >= 1.0f && camera.fov <= 90.0f)
+		camera.fov -= yoffset;
+	if (camera.fov <= 1.0f)
+		camera.fov = 1.0f;
+	if (camera.fov >= 90.0f)
+		camera.fov = 90.0f;
+}
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 
-	if (key == GLFW_KEY_X && action == GLFW_PRESS)
-	{
-		rotateX = true;
-		rotateY = false;
-		rotateZ = false;
-	}
-
-	if (key == GLFW_KEY_Y && action == GLFW_PRESS)
-	{
-		rotateX = false;
-		rotateY = true;
-		rotateZ = false;
-	}
-
-	if (key == GLFW_KEY_Z && action == GLFW_PRESS)
-	{
-		rotateX = false;
-		rotateY = false;
-		rotateZ = true;
-	}
-
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
 	{
 		perspective = !perspective;
 	}
-
-
-
 }
 
 int setupGeometry()
