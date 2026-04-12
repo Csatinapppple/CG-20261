@@ -18,11 +18,8 @@ void main()
         return;
     }
     
-    // Calculate distance to nearest edge
     float minDist = min(vBarycentric.x, min(vBarycentric.y, vBarycentric.z));
     
-    // Draw wireframe only on the actual edges
-    // Use a small threshold (0.01-0.05) and make sure it's exactly on edges
     if (minDist < wireframeWidth) {
         FragColor = vec4(wireframeColor, 1.0);
     } else {
