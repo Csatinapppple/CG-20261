@@ -45,6 +45,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/glad)
 include_directories(${glm_SOURCE_DIR})
 include_directories(${stb_image_SOURCE_DIR})
+include_directories(${assimp_SOURCE_DIR})
 
 
 # Lista de pastas dos projetos (devem corresponder aos nomes dos diretórios dentro de src/)
@@ -92,5 +93,5 @@ foreach(EXERCISE ${EXERCISES})
     
     # Configura os includes e linka as bibliotecas
 		target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR} ${assimp_SOURCE_DIR})
-    target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS})
+    target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS} assimp)
 endforeach()
