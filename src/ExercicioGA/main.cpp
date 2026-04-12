@@ -10,7 +10,7 @@
 #include <cmath>
 #include <shader.hpp>
 #include <camera.hpp>
-#include <Model.hpp>
+#include <model.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -163,23 +163,6 @@ void processInput(GLFWwindow *window) {
 		modelList[currentModel].moveModel(Z_AXIS, deltaTime);
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_KP_7) == GLFW_PRESS) {
-		modelList[currentModel].setOperation(TRANSLATE);
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS) {
-		modelList[currentModel].setOperation(ROTATE);
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_1) == GLFW_PRESS) {
-		modelList[currentModel].setOperation(SCALE);
-	}
-	if (glfwGetKey(window, GLFW_KEY_KP_0) == GLFW_PRESS) {
-		modelList[currentModel].setOperation(SCALE_SIMETRICAL);
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_KP_DECIMAL) == GLFW_PRESS) {
-		modelList[currentModel].resetModelScaleAndRotation();
-	}
-
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
@@ -197,6 +180,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_KP_DIVIDE && action == GLFW_PRESS){
 		wireframe ^= 1;
 		shaderGlobal->setBool("wireframe", wireframe);
+	}
+
+	if (key == GLFW_KEY_KP_7 && action == GLFW_PRESS) {
+		modelList[currentModel].setOperation(TRANSLATE);
+	}
+	if (key == GLFW_KEY_KP_4 && action == GLFW_PRESS) {
+		modelList[currentModel].setOperation(ROTATE);
+	}
+	if (key == GLFW_KEY_KP_1 && action == GLFW_PRESS) {
+		modelList[currentModel].setOperation(SCALE);
+	}
+	if (key == GLFW_KEY_KP_0 && action == GLFW_PRESS) {
+		modelList[currentModel].setOperation(SCALE_SIMETRICAL);
+	}
+
+	if (key == GLFW_KEY_KP_DECIMAL && action == GLFW_PRESS) {
+		modelList[currentModel].resetModelScaleAndRotation();
 	}
 }
 

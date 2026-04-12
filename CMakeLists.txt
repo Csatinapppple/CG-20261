@@ -32,11 +32,16 @@ FetchContent_Declare(
   GIT_TAG master
 )
 
-FetchContent_MakeAvailable(stb_image)
+FetchContent_Declare(
+  assimp
+  GIT_REPOSITORY https://github.com/assimp/assimp.git
+  GIT_TAG master
+)
+
+FetchContent_MakeAvailable(stb_image assimp)
 
 # Adiciona as pastas de cabeçalhos
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/common)
 include_directories(${CMAKE_SOURCE_DIR}/include/glad)
 include_directories(${glm_SOURCE_DIR})
 include_directories(${stb_image_SOURCE_DIR})
@@ -47,6 +52,7 @@ set(EXERCISES
     Hello3D
     HelloCamera
     HelloOBJ
+		ExercicioGA
     # TrabalhoGrauA
 )
 
@@ -85,6 +91,6 @@ foreach(EXERCISE ${EXERCISES})
     add_executable(${EXERCISE} ${SOURCES} ${GLAD_C_FILE})
     
     # Configura os includes e linka as bibliotecas
-    target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR})
+		target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR} ${assimp_SOURCE_DIR})
     target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS})
 endforeach()
