@@ -12,6 +12,9 @@
 #include <camera.hpp>
 #include <model.hpp>
 
+#include <material.hpp>
+#include <light.hpp>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -25,7 +28,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-glm::mat4 ortho = glm::ortho(0.f, 800.f, 0.f, 600.f, 0.1f, 100.f);
+bool orthographic = false;
+glm::mat4 ortho = glm::ortho(
+		-4.0f, 4.f, -3.f, 3.0f, 0.1f, 100.f);
 
 Camera camera(glm::vec3(0.0, 0.0, 3.0));
 
@@ -33,11 +38,18 @@ float lastX = SCR_WIDTH / 2.0f, lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 float deltaTime=0.0, lastFrame = 0.0;
 
-glm::vec3 lightPos(1.2, 1.0, 2.0);
-
 Shader* shaderGlobal;
 int currentModel = 0;
+int currentLightDist = 0;
 std::vector<Model> modelList; 
+
+Light light = {
+	.position=glm::vec3(1.2, 1.0, 2.0),
+	.ambient=glm::vec3(1.0f),
+	.diffuse=glm::vec3(1.0f),
+	.specular=glm::vec3(1.0f),
+	.distance = LIGHT_DISTANCES[currentLightDist]
+};
 
 int main() {
 	
@@ -74,35 +86,45 @@ int main() {
 	//stbi_set_flip_vertically_on_load(true);
 	
 	Shader shader("./shaders/vertex.glsl", "./shaders/fragment.glsl", "./shaders/geometry.glsl");
+	Shader lightShader("./shaders/lightVertex.glsl", "./shaders/lightFragment.glsl");
 	shaderGlobal = &shader;
 	shader.use();
 
 	shader.setVec3f("wireframeColor", glm::vec3(0.0f, 1.0f, 0.0f));
 	shader.setFloat("wireframeWidth", 0.005f);
 	shader.setBool("wireframe", false);
+	
+	Model lightCube = Model("./assets/Modelos3D/Cube.obj", MAT_JADE, true, light.position);
 
 	modelList.push_back(Model("./assets/Modelos3D/Cube.obj"));
-  modelList.push_back(Model("./assets/Modelos3D/Suzanne.obj"));
+  modelList.push_back(Model("./assets/Modelos3D/Suzanne.obj", MAT_GOLD));
 	
 	while(!glfwWindowShouldClose(window)){
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		processInput(window);
-		
+
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
 		shader.use();
 		
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.f);
+		glm::mat4 projection = (orthographic) ? ortho : 
+			glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.f);
 		glm::mat4 view = camera.GetViewMatrix();
 		shader.setMatrix4f("projection", projection);
 		shader.setMatrix4f("view", view);
+		shader.setVec3f("viewPos", camera.Position);
 
 		for(int i = 0; i < modelList.size(); i++) {
-			modelList[i].Draw(shader);
+			modelList[i].Draw(shader, light);
 		}
+		
+		lightShader.use();
+		lightShader.setMatrix4f("projection", projection);
+		lightShader.setMatrix4f("view", view);
+		lightCube.Draw(lightShader, light);
 		
 
 		glfwSwapBuffers(window);
@@ -142,6 +164,8 @@ void processInput(GLFWwindow *window) {
 		0 (set Operation SCALE_SIMETRICALLY to current Model)
 		. (reset Scaling and Rotation of current Model)
 		/ (set Wireframe ON and OFF)
+		NM Cycle through materials on the currentModel
+		KL Increase Decrease Light Distance
 	*/
 	
 	if (glfwGetKey(window, GLFW_KEY_KP_8) == GLFW_PRESS) {
@@ -163,7 +187,25 @@ void processInput(GLFWwindow *window) {
 		modelList[currentModel].moveModel(Z_AXIS, deltaTime);
 	}
 
+	if (glfwGetKey(window, GLFW_KEY_KP_7) == GLFW_PRESS) {
+		modelList[currentModel].setOperation(TRANSLATE);
+	}
+	if (glfwGetKey(window, GLFW_KEY_KP_4) == GLFW_PRESS) {
+		modelList[currentModel].setOperation(ROTATE);
+	}
+	if (glfwGetKey(window, GLFW_KEY_KP_1) == GLFW_PRESS) {
+		modelList[currentModel].setOperation(SCALE);
+	}
+	if (glfwGetKey(window, GLFW_KEY_KP_0) == GLFW_PRESS) {
+		modelList[currentModel].setOperation(SCALE_SIMETRICAL);
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_KP_DECIMAL) == GLFW_PRESS) {
+		modelList[currentModel].resetModelScaleAndRotation();
+	}
+
 }
+
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
 	static bool wireframe = false;
@@ -179,24 +221,25 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	if (key == GLFW_KEY_KP_DIVIDE && action == GLFW_PRESS){
 		wireframe ^= 1;
+		shaderGlobal->use();
 		shaderGlobal->setBool("wireframe", wireframe);
 	}
-
-	if (key == GLFW_KEY_KP_7 && action == GLFW_PRESS) {
-		modelList[currentModel].setOperation(TRANSLATE);
+	if (key == GLFW_KEY_P && action == GLFW_PRESS){
+		orthographic ^= 1;
 	}
-	if (key == GLFW_KEY_KP_4 && action == GLFW_PRESS) {
-		modelList[currentModel].setOperation(ROTATE);
+	if (key == GLFW_KEY_M && action == GLFW_PRESS){
+		modelList[currentModel].cycleMaterial(true);
 	}
-	if (key == GLFW_KEY_KP_1 && action == GLFW_PRESS) {
-		modelList[currentModel].setOperation(SCALE);
+	if (key == GLFW_KEY_N && action == GLFW_PRESS){
+		modelList[currentModel].cycleMaterial(false);
 	}
-	if (key == GLFW_KEY_KP_0 && action == GLFW_PRESS) {
-		modelList[currentModel].setOperation(SCALE_SIMETRICAL);
+	if (key == GLFW_KEY_L && action == GLFW_PRESS){
+		currentLightDist = std::min(++currentLightDist, static_cast<int>(LIGHT_DISTANCES.size() - 1));
+		light.distance = LIGHT_DISTANCES[currentLightDist];
 	}
-
-	if (key == GLFW_KEY_KP_DECIMAL && action == GLFW_PRESS) {
-		modelList[currentModel].resetModelScaleAndRotation();
+	if (key == GLFW_KEY_K && action == GLFW_PRESS){
+		currentLightDist = std::max(0, --currentLightDist);
+		light.distance = LIGHT_DISTANCES[currentLightDist];
 	}
 }
 

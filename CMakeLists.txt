@@ -53,7 +53,7 @@ set(EXERCISES
     Hello3D
     HelloCamera
     HelloOBJ
-		ExercicioGA
+		TrabalhoGA
     # TrabalhoGrauA
 )
 
