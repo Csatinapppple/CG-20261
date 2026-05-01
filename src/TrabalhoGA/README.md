@@ -1,5 +1,5 @@
 # Trabalho de OpenGL do Grau A
-## Christian Aguiar Plentz, Gabriel Freitas de Adolfo, Bruno Silveira da Silva
+## Christian Aguiar Plentz, Gabriel de Freitas Adolfo, Bruno Silveira da Silva
 
 Para compilar o programa basta rodar o comando cmake -S . -B build/ para gerar o arquivo Makefile e compilar utilizando o comando make
 
