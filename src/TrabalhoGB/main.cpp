@@ -132,13 +132,12 @@ int main() {
 	shader.setDirLight(scene.dirLight);
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTex);
 
 
 	shader.setVec3f("wireframeColor", glm::vec3(0.0f, 1.0f, 0.0f));
 	shader.setFloat("wireframeWidth", 0.005f);
 	shader.setBool("wireframe", false);
-	shader.setPointLight(light, 0);
 	
 	Model lightCube = Model("./assets/Modelos3D/Cube.obj", light.position);
 
@@ -168,7 +167,12 @@ int main() {
 		lightShader.use();
 		lightShader.setMatrix4f("projection", projection);
 		lightShader.setMatrix4f("view", view);
-		lightCube.Draw(lightShader, deltaTime);
+		for (int i = 0; i < scene.pointLights.size(); i++) {
+			lightCube.DrawLight(lightShader, scene.pointLights[i].position);
+		}
+		for (int i = 0; i < scene.spotLights.size(); i++) {
+			lightCube.DrawLight(lightShader, scene.spotLights[i].position);
+		}
 		
 		skyboxShader.use();
 		skyboxShader.setMatrix4f("projection", perspective);

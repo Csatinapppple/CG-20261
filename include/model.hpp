@@ -66,9 +66,13 @@ public:
 	}
 	void Draw(Shader& shader, float delta){
 		shader.setMatrix4f("model", getModel(delta));
-		if (!isLight) {
-			shader.setMaterial(material);
-		}
+		shader.setMaterial(material);
+		for (size_t i = 0; meshes.size() > i; i++)
+			meshes[i].Draw(shader);
+	}
+	void DrawLight(Shader& shader, glm::vec3 position){
+		translate = position;
+		shader.setMatrix4f("model", getModel(0));
 		for (size_t i = 0; meshes.size() > i; i++)
 			meshes[i].Draw(shader);
 	}
