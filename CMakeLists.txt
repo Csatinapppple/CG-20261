@@ -22,8 +22,14 @@ FetchContent_Declare(
   GIT_TAG master  # Define a versão desejada da GLM
 )
 
+FetchContent_Declare(
+  assimp
+  GIT_REPOSITORY https://github.com/assimp/assimp.git
+  GIT_TAG master  
+)
+
 # Faz o download e compila as bibliotecas
-FetchContent_MakeAvailable(glfw glm)
+FetchContent_MakeAvailable(glfw glm assimp)
 
 # Configura o FetchContent para baixar a stb_image automaticamente
 FetchContent_Declare(
@@ -32,7 +38,13 @@ FetchContent_Declare(
   GIT_TAG master
 )
 
-FetchContent_MakeAvailable(stb_image)
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG master
+)
+
+FetchContent_MakeAvailable(stb_image json)
 
 # Adiciona as pastas de cabeçalhos
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -40,6 +52,8 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 include_directories(${CMAKE_SOURCE_DIR}/include/glad)
 include_directories(${glm_SOURCE_DIR})
 include_directories(${stb_image_SOURCE_DIR})
+include_directories(${assimp_SOURCE_DIR})
+include_directories(${json_SOURCE_DIR}/include)
 
 
 # Lista de pastas dos projetos (devem corresponder aos nomes dos diretórios dentro de src/)
@@ -50,7 +64,7 @@ set(EXERCISES
     HelloPhong
     HelloCubemap
     HelloCurves
-    # TrabalhoGrauA
+    TrabalhoGB
 )
 
 add_compile_options(-Wno-pragmas)
@@ -88,6 +102,6 @@ foreach(EXERCISE ${EXERCISES})
     add_executable(${EXERCISE} ${SOURCES} ${GLAD_C_FILE})
     
     # Configura os includes e linka as bibliotecas
-    target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR})
-    target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS})
+		target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR} ${assimp_SOURCE_DIR})
+    target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS} assimp)
 endforeach()
